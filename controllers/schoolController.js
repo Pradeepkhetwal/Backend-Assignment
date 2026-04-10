@@ -19,33 +19,55 @@ function getDistance(lat1, lon1, lat2, lon2) {
   return R * c;
 }
 
-// Add School API
+// Add School API 
 exports.addSchool = (req, res) => {
-  const { name, address, latitude, longitude } = req.body;
+  let { name, address, latitude, longitude } = req.body;
 
-  // Validation
-  if (!name || !address || latitude == null || longitude == null) {
-    return res.status(400).json({ message: "All fields are required" });
+  //  Validate string fields
+  if (typeof name !== "string" || name.trim() === "") {
+    return res.status(400).json({ message: "Name must be a non-empty string" });
   }
 
+  if (typeof address !== "string" || address.trim() === "") {
+    return res.status(400).json({ message: "Address must be a non-empty string" });
+  }
+
+  //  Convert to numbers
+  latitude = Number(latitude);
+  longitude = Number(longitude);
+
+  //  Type validation
   if (isNaN(latitude) || isNaN(longitude)) {
-    return res.status(400).json({ message: "Invalid coordinates" });
+    return res.status(400).json({ message: "Latitude and longitude must be numbers" });
   }
 
-  const sql = "INSERT INTO schools (name, address, latitude, longitude) VALUES (?, ?, ?, ?)";
+  //  Range validation
+  if (latitude < -90 || latitude > 90) {
+    return res.status(400).json({ message: "Latitude must be between -90 and 90" });
+  }
 
-  db.query(sql, [name, address, latitude, longitude], (err, result) => {
+  if (longitude < -180 || longitude > 180) {
+    return res.status(400).json({ message: "Longitude must be between -180 and 180" });
+  }
+
+  //  Insert into DB
+  const sql = `
+    INSERT INTO schools (name, address, latitude, longitude)
+    VALUES (?, ?, ?, ?)
+  `;
+
+  db.query(sql, [name.trim(), address.trim(), latitude, longitude], (err, result) => {
     if (err) {
-      return res.status(500).json({ error: err.message });
+      console.error("DB Error:", err);
+      return res.status(500).json({ message: "Database error" });
     }
 
-    res.status(201).json({
+    return res.status(201).json({
       message: "School added successfully",
       id: result.insertId,
     });
   });
 };
-
 //  List Schools API
 exports.listSchools = (req, res) => {
   const { latitude, longitude } = req.query;
